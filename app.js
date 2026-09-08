@@ -492,91 +492,126 @@ function renderLowStock(active) {
 }
 
 // --- OBCHODY ---
-let pendingStoreItems = [];
-let selectedStoreProductId = null;
+const STALE_VISIT_DAYS = 30;
 
-const storeProductSearch = document.getElementById('storeProductSearch');
-const storeProductResults = document.getElementById('storeProductResults');
+// Znovupoužitelný "vyber produkt + počet + přidat" widget.
+// Používá se jak pro první dodávku při zakládání obchodu, tak pro
+// zaznamenání další návštěvy u existujícího obchodu.
+function createItemPicker() {
+  let items = [];
+  let selectedId = null;
 
-function populateStoreProductSelect() {
-  // Zachováno jako no-op kvůli volání v renderAll (výsledky se teď generují za běhu při psaní).
+  const wrap = document.createElement('div');
+
+  const row = document.createElement('div');
+  row.className = 'store-item-picker';
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'store-search-wrap';
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = 'Hledat produkt…';
+  searchInput.autocomplete = 'off';
+  const results = document.createElement('div');
+  results.className = 'store-product-results hidden';
+  searchWrap.appendChild(searchInput);
+  searchWrap.appendChild(results);
+
+  const qtyInput = document.createElement('input');
+  qtyInput.type = 'number';
+  qtyInput.value = 1;
+  qtyInput.min = 1;
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-secondary';
+  addBtn.textContent = '+ Přidat';
+
+  row.appendChild(searchWrap);
+  row.appendChild(qtyInput);
+  row.appendChild(addBtn);
+
+  const list = document.createElement('div');
+  list.className = 'store-items-list-inline';
+
+  wrap.appendChild(row);
+  wrap.appendChild(list);
+
+  function renderResults() {
+    const term = searchInput.value.trim().toLowerCase();
+    if (!term) {
+      results.classList.add('hidden');
+      results.innerHTML = '';
+      return;
+    }
+    const matches = activeProducts().filter(p => p.name.toLowerCase().includes(term)).slice(0, 8);
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="store-result-item">Nic nenalezeno</div>';
+      results.classList.remove('hidden');
+      return;
+    }
+    results.innerHTML = matches.map(p => `<div class="store-result-item" data-id="${p.id}">${p.name}</div>`).join('');
+    results.classList.remove('hidden');
+    results.querySelectorAll('.store-result-item[data-id]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const product = activeProducts().find(p => p.id === el.dataset.id);
+        if (!product) return;
+        selectedId = product.id;
+        searchInput.value = product.name;
+        results.classList.add('hidden');
+        results.innerHTML = '';
+      });
+    });
+  }
+
+  searchInput.addEventListener('input', () => { selectedId = null; renderResults(); });
+  document.addEventListener('click', (e) => {
+    if (!searchWrap.contains(e.target)) results.classList.add('hidden');
+  });
+
+  function renderChips() {
+    list.innerHTML = '';
+    items.forEach((item, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'store-item-chip';
+      chip.innerHTML = `<span>${item.qty}× ${item.name}</span><button type="button">✕</button>`;
+      chip.querySelector('button').addEventListener('click', () => {
+        items.splice(idx, 1);
+        renderChips();
+      });
+      list.appendChild(chip);
+    });
+  }
+
+  addBtn.addEventListener('click', () => {
+    const qty = parseInt(qtyInput.value) || 1;
+    if (!selectedId) { alert('Nejdřív vyber produkt ze seznamu'); return; }
+    const product = activeProducts().find(p => p.id === selectedId);
+    if (!product) return;
+    const existing = items.find(i => i.productId === selectedId);
+    if (existing) existing.qty += qty; else items.push({ productId: selectedId, name: product.name, qty });
+    searchInput.value = '';
+    selectedId = null;
+    qtyInput.value = 1;
+    renderChips();
+  });
+
+  return {
+    element: wrap,
+    getItems: () => items,
+    reset: () => { items = []; renderChips(); searchInput.value = ''; qtyInput.value = 1; selectedId = null; }
+  };
 }
 
-storeProductSearch.addEventListener('input', () => {
-  selectedStoreProductId = null;
-  const term = storeProductSearch.value.trim().toLowerCase();
-  if (!term) {
-    storeProductResults.classList.add('hidden');
-    storeProductResults.innerHTML = '';
-    return;
-  }
+// --- Formulář pro nový obchod ---
+const storeVisitDateInput = document.getElementById('storeVisitDate');
+storeVisitDateInput.value = new Date().toISOString().slice(0, 10);
 
-  const matches = activeProducts()
-    .filter(p => p.name.toLowerCase().includes(term))
-    .slice(0, 8);
+const newStorePicker = createItemPicker();
+document.getElementById('storeItemPickerMount').appendChild(newStorePicker.element);
 
-  if (matches.length === 0) {
-    storeProductResults.innerHTML = '<div class="store-result-item">Nic nenalezeno</div>';
-    storeProductResults.classList.remove('hidden');
-    return;
-  }
-
-  storeProductResults.innerHTML = matches.map(p =>
-    `<div class="store-result-item" data-id="${p.id}">${p.name}</div>`
-  ).join('');
-  storeProductResults.classList.remove('hidden');
-
-  storeProductResults.querySelectorAll('.store-result-item[data-id]').forEach((el) => {
-    el.addEventListener('click', () => {
-      const product = activeProducts().find(p => p.id === el.dataset.id);
-      if (!product) return;
-      selectedStoreProductId = product.id;
-      storeProductSearch.value = product.name;
-      storeProductResults.classList.add('hidden');
-      storeProductResults.innerHTML = '';
-    });
-  });
-});
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.store-search-wrap')) {
-    storeProductResults.classList.add('hidden');
-  }
-});
-
-document.getElementById('addStoreItemBtn').addEventListener('click', () => {
-  const qty = parseInt(document.getElementById('storeProductQty').value) || 1;
-  if (!selectedStoreProductId) { alert('Nejdřív vyber produkt ze seznamu'); return; }
-
-  const product = activeProducts().find(p => p.id === selectedStoreProductId);
-  if (!product) return;
-
-  const existing = pendingStoreItems.find(i => i.productId === selectedStoreProductId);
-  if (existing) {
-    existing.qty += qty;
-  } else {
-    pendingStoreItems.push({ productId: selectedStoreProductId, name: product.name, qty });
-  }
-
-  storeProductSearch.value = '';
-  selectedStoreProductId = null;
-  document.getElementById('storeProductQty').value = 1;
-  renderStoreItemsPicker();
-});
-
-function renderStoreItemsPicker() {
-  const list = document.getElementById('storeItemsList');
-  list.innerHTML = '';
-  pendingStoreItems.forEach((item, idx) => {
-    const chip = document.createElement('div');
-    chip.className = 'store-item-chip';
-    chip.innerHTML = `<span>${item.qty}× ${item.name}</span><button type="button">✕</button>`;
-    chip.querySelector('button').addEventListener('click', () => {
-      pendingStoreItems.splice(idx, 1);
-      renderStoreItemsPicker();
-    });
-    list.appendChild(chip);
-  });
+function populateStoreProductSelect() {
+  // Kompatibilní no-op: výsledky výběru produktu se teď generují za běhu při psaní.
 }
 
 document.getElementById('saveStoreBtn').addEventListener('click', async () => {
@@ -584,13 +619,18 @@ document.getElementById('saveStoreBtn').addEventListener('click', async () => {
   const address = document.getElementById('storeAddress').value.trim();
   const contact = document.getElementById('storeContact').value.trim();
   const note = document.getElementById('storeNote').value.trim();
+  const visitDate = storeVisitDateInput.value || new Date().toISOString().slice(0, 10);
+  const items = newStorePicker.getItems();
 
   if (!name) { alert('Vyplň název obchodu'); return; }
+
+  const deliveries = items.length ? [{ date: visitDate, items }] : [];
 
   try {
     await db.collection('stores').add({
       name, address, contact, note,
-      items: pendingStoreItems,
+      lastVisit: visitDate,
+      deliveries,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (err) {
@@ -602,9 +642,89 @@ document.getElementById('saveStoreBtn').addEventListener('click', async () => {
   document.getElementById('storeAddress').value = '';
   document.getElementById('storeContact').value = '';
   document.getElementById('storeNote').value = '';
-  pendingStoreItems = [];
-  renderStoreItemsPicker();
+  storeVisitDateInput.value = new Date().toISOString().slice(0, 10);
+  newStorePicker.reset();
 });
+
+// --- Zobrazení "naposledy navštíveno" ---
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const diffMs = Date.now() - new Date(dateStr + 'T00:00:00').getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('cs-CZ');
+}
+
+function visitLineHtml(s) {
+  if (!s.lastVisit) return '<div class="store-visit-line">Zatím žádná návštěva</div>';
+  const days = daysSince(s.lastVisit);
+  const stale = days !== null && days > STALE_VISIT_DAYS;
+  return `
+    <div class="store-visit-line">
+      Naposledy: ${formatDate(s.lastVisit)}
+      <span class="store-visit-badge ${stale ? 'stale' : ''}">${days === 0 ? 'dnes' : days + ' dní zpět'}</span>
+      ${stale ? '<span class="store-visit-badge stale">Dávno nenavštíveno</span>' : ''}
+    </div>
+  `;
+}
+
+// --- Historie dodávek ---
+function historyHtml(s) {
+  const deliveries = s.deliveries || [];
+  if (deliveries.length === 0) return '';
+  const sorted = [...deliveries].sort((a, b) => b.date.localeCompare(a.date));
+  const rows = sorted.map(d => `
+    <li class="store-history-item">
+      <span class="store-history-date">${formatDate(d.date)}</span>
+      ${d.items.map(i => `${i.qty}× ${i.name}`).join(', ')}
+    </li>
+  `).join('');
+  return `
+    <button class="store-history-toggle" type="button">Historie dodávek (${deliveries.length}) ▾</button>
+    <ul class="store-history-list hidden">${rows}</ul>
+  `;
+}
+
+// --- Panel pro zaznamenání nové návštěvy u existujícího obchodu ---
+function buildAddVisitPanel(store) {
+  const panel = document.createElement('div');
+  panel.className = 'store-add-visit-panel hidden';
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.value = new Date().toISOString().slice(0, 10);
+
+  const picker = createItemPicker();
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn-primary';
+  saveBtn.textContent = 'Uložit dodávku';
+  saveBtn.style.marginTop = '8px';
+
+  saveBtn.addEventListener('click', async () => {
+    const items = picker.getItems();
+    if (items.length === 0) { alert('Přidej aspoň jednu položku'); return; }
+    const date = dateInput.value || new Date().toISOString().slice(0, 10);
+    const newDeliveries = [...(store.deliveries || []), { date, items }];
+    try {
+      await db.collection('stores').doc(store.id).update({
+        deliveries: newDeliveries,
+        lastVisit: date
+      });
+    } catch (err) {
+      alert('Uložení se nepovedlo: ' + err.message);
+    }
+  });
+
+  panel.appendChild(dateInput);
+  panel.appendChild(picker.element);
+  panel.appendChild(saveBtn);
+  return panel;
+}
 
 function renderStores() {
   const container = document.getElementById('storesList');
@@ -618,10 +738,6 @@ function renderStores() {
   emptyState.classList.add('hidden');
 
   allStores.forEach((s) => {
-    const items = s.items || [];
-    const itemsHtml = items.length
-      ? `<div class="store-items-view">${items.map(i => `<span class="store-item-tag">${i.qty}× ${i.name}</span>`).join('')}</div>`
-      : '';
     const card = document.createElement('div');
     card.className = 'store-card';
     card.innerHTML = `
@@ -631,9 +747,11 @@ function renderStores() {
       </div>
       ${s.address ? `<div class="store-line">${s.address}</div>` : ''}
       ${s.contact ? `<div class="store-line">${s.contact}</div>` : ''}
-      ${itemsHtml}
+      ${visitLineHtml(s)}
+      ${historyHtml(s)}
       ${s.note ? `<div class="store-note">${s.note}</div>` : ''}
     `;
+
     card.querySelector('.store-delete-btn').addEventListener('click', async () => {
       if (!confirm(`Smazat obchod "${s.name}"?`)) return;
       try {
@@ -642,6 +760,25 @@ function renderStores() {
         alert('Smazání se nepovedlo: ' + err.message);
       }
     });
+
+    const historyToggle = card.querySelector('.store-history-toggle');
+    if (historyToggle) {
+      historyToggle.addEventListener('click', () => {
+        card.querySelector('.store-history-list').classList.toggle('hidden');
+      });
+    }
+
+    const addVisitBtn = document.createElement('button');
+    addVisitBtn.type = 'button';
+    addVisitBtn.className = 'store-add-visit-btn';
+    addVisitBtn.textContent = '+ Zaznamenat návštěvu';
+    const addVisitPanel = buildAddVisitPanel(s);
+    addVisitBtn.addEventListener('click', () => {
+      addVisitPanel.classList.toggle('hidden');
+    });
+
+    card.appendChild(addVisitBtn);
+    card.appendChild(addVisitPanel);
     container.appendChild(card);
   });
 }

@@ -1,6 +1,9 @@
 let html5QrCode;
 let currentScannedCode = null;
 let currentProductDoc = null; // { id, ...data } pokud produkt existuje
+let allProducts = []; // lokální kopie pro hledání a statistiky
+
+const LOW_STOCK_THRESHOLD = 5;
 
 const startScanBtn = document.getElementById('startScanBtn');
 const stopScanBtn = document.getElementById('stopScanBtn');
@@ -119,27 +122,84 @@ function resetPanel() {
   currentProductDoc = null;
 }
 
+// --- STATISTIKY ---
+function renderStats(products) {
+  const totalProducts = products.length;
+  const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const lowStock = products.filter(p => p.stock <= LOW_STOCK_THRESHOLD).length;
+
+  document.getElementById('statProducts').textContent = totalProducts;
+  document.getElementById('statTotalStock').textContent = totalStock;
+  document.getElementById('statLowStock').textContent = lowStock;
+}
+
 // --- ŽIVÝ PŘEHLED SKLADU ---
-db.collection('products').orderBy('name').onSnapshot((snapshot) => {
-  const tbody = document.getElementById('productsTableBody');
-  tbody.innerHTML = '';
-  snapshot.forEach((doc) => {
-    const p = doc.data();
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${p.name}</td><td>${p.barcode}</td><td>${p.price} Kč</td><td>${p.stock} ks</td>`;
-    tbody.appendChild(row);
+function stockClass(stock) {
+  if (stock <= 0) return 'out';
+  if (stock <= LOW_STOCK_THRESHOLD) return 'low';
+  return '';
+}
+
+function renderProducts(products) {
+  const container = document.getElementById('productsList');
+  const emptyState = document.getElementById('emptyStock');
+  container.innerHTML = '';
+
+  if (products.length === 0) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  emptyState.classList.add('hidden');
+
+  products.forEach((p) => {
+    const row = document.createElement('div');
+    row.className = 'product-row';
+    row.innerHTML = `
+      <div class="stock-indicator ${stockClass(p.stock)}"></div>
+      <div class="product-info">
+        <div class="product-name">${p.name}</div>
+        <div class="product-meta">${p.barcode} · ${p.price} Kč</div>
+      </div>
+      <div class="product-qty">${p.stock}</div>
+    `;
+    container.appendChild(row);
   });
+}
+
+db.collection('products').orderBy('name').onSnapshot((snapshot) => {
+  allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  renderStats(allProducts);
+  applySearch();
 });
+
+document.getElementById('searchInput').addEventListener('input', applySearch);
+
+function applySearch() {
+  const term = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = term
+    ? allProducts.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term))
+    : allProducts;
+  renderProducts(filtered);
+}
 
 // --- HISTORIE POHYBŮ (posledních 15) ---
 db.collection('movements').orderBy('timestamp', 'desc').limit(15).onSnapshot((snapshot) => {
   const list = document.getElementById('historyList');
+  const emptyHistory = document.getElementById('emptyHistory');
   list.innerHTML = '';
+
+  if (snapshot.empty) {
+    emptyHistory.classList.remove('hidden');
+    return;
+  }
+  emptyHistory.classList.add('hidden');
+
   snapshot.forEach((doc) => {
     const m = doc.data();
     const li = document.createElement('li');
     const sign = m.change > 0 ? '+' : '';
-    li.textContent = `${m.name}: ${sign}${m.change} ks`;
+    const cls = m.change > 0 ? 'change-positive' : 'change-negative';
+    li.innerHTML = `<span>${m.name}</span><span class="${cls}">${sign}${m.change} ks</span>`;
     list.appendChild(li);
   });
 });

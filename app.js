@@ -458,6 +458,7 @@ function renderAll() {
   }
 
   renderLowStock(active);
+  populateStoreProductSelect();
 }
 
 function applySearch() {
@@ -491,6 +492,51 @@ function renderLowStock(active) {
 }
 
 // --- OBCHODY ---
+let pendingStoreItems = [];
+
+const storeProductSelect = document.getElementById('storeProductSelect');
+
+function populateStoreProductSelect() {
+  const current = storeProductSelect.value;
+  storeProductSelect.innerHTML = activeProducts()
+    .map(p => `<option value="${p.id}">${p.name}</option>`)
+    .join('');
+  if (current) storeProductSelect.value = current;
+}
+
+document.getElementById('addStoreItemBtn').addEventListener('click', () => {
+  const productId = storeProductSelect.value;
+  const qty = parseInt(document.getElementById('storeProductQty').value) || 1;
+  if (!productId) return;
+
+  const product = activeProducts().find(p => p.id === productId);
+  if (!product) return;
+
+  const existing = pendingStoreItems.find(i => i.productId === productId);
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    pendingStoreItems.push({ productId, name: product.name, qty });
+  }
+  document.getElementById('storeProductQty').value = 1;
+  renderStoreItemsPicker();
+});
+
+function renderStoreItemsPicker() {
+  const list = document.getElementById('storeItemsList');
+  list.innerHTML = '';
+  pendingStoreItems.forEach((item, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'store-item-chip';
+    chip.innerHTML = `<span>${item.qty}× ${item.name}</span><button type="button">✕</button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+      pendingStoreItems.splice(idx, 1);
+      renderStoreItemsPicker();
+    });
+    list.appendChild(chip);
+  });
+}
+
 document.getElementById('saveStoreBtn').addEventListener('click', async () => {
   const name = document.getElementById('storeName').value.trim();
   const address = document.getElementById('storeAddress').value.trim();
@@ -502,6 +548,7 @@ document.getElementById('saveStoreBtn').addEventListener('click', async () => {
   try {
     await db.collection('stores').add({
       name, address, contact, note,
+      items: pendingStoreItems,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (err) {
@@ -513,6 +560,8 @@ document.getElementById('saveStoreBtn').addEventListener('click', async () => {
   document.getElementById('storeAddress').value = '';
   document.getElementById('storeContact').value = '';
   document.getElementById('storeNote').value = '';
+  pendingStoreItems = [];
+  renderStoreItemsPicker();
 });
 
 function renderStores() {
@@ -527,6 +576,10 @@ function renderStores() {
   emptyState.classList.add('hidden');
 
   allStores.forEach((s) => {
+    const items = s.items || [];
+    const itemsHtml = items.length
+      ? `<div class="store-items-view">${items.map(i => `<span class="store-item-tag">${i.qty}× ${i.name}</span>`).join('')}</div>`
+      : '';
     const card = document.createElement('div');
     card.className = 'store-card';
     card.innerHTML = `
@@ -536,6 +589,7 @@ function renderStores() {
       </div>
       ${s.address ? `<div class="store-line">${s.address}</div>` : ''}
       ${s.contact ? `<div class="store-line">${s.contact}</div>` : ''}
+      ${itemsHtml}
       ${s.note ? `<div class="store-note">${s.note}</div>` : ''}
     `;
     card.querySelector('.store-delete-btn').addEventListener('click', async () => {

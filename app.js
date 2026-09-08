@@ -12,7 +12,15 @@ const CATEGORIES = ['1', '2', '3', '4', '5'];
 
 // --- NAVIGACE MEZI ZÁLOŽKAMI ---
 document.querySelectorAll('.nav-btn').forEach((btn) => {
-  btn.addEventListener('click', () => switchView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    switchView(btn.dataset.view);
+    if (btn.dataset.view === 'view-scan') {
+      resetPanel();
+      startScanning();
+    } else {
+      stopScanner();
+    }
+  });
 });
 
 function switchView(viewId) {
@@ -35,7 +43,10 @@ const knownProduct = document.getElementById('knownProduct');
 const newProduct = document.getElementById('newProduct');
 const newProductSubmit = document.getElementById('newProductSubmit');
 
-startScanBtn.addEventListener('click', () => {
+startScanBtn.addEventListener('click', startScanning);
+
+function startScanning() {
+  if (html5QrCode && html5QrCode.isScanning) return;
   document.getElementById('reader').classList.remove('hidden');
   stopScanBtn.classList.remove('hidden');
   startScanBtn.classList.add('hidden');
@@ -47,12 +58,12 @@ startScanBtn.addEventListener('click', () => {
     onScanSuccess,
     () => {}
   );
-});
+}
 
 stopScanBtn.addEventListener('click', stopScanner);
 
 function stopScanner() {
-  if (html5QrCode) {
+  if (html5QrCode && html5QrCode.isScanning) {
     html5QrCode.stop().then(() => {
       document.getElementById('reader').classList.add('hidden');
       stopScanBtn.classList.add('hidden');
@@ -243,8 +254,8 @@ function stockClass(stock) {
 
 function productItemHtml(p) {
   const photoHtml = p.photoUrl
-    ? `<img class="grid-photo" src="${p.photoUrl}">`
-    : `<div class="grid-photo-placeholder">bez fotky</div>`;
+    ? `<div class="grid-photo-wrap"><img src="${p.photoUrl}"></div>`
+    : `<div class="grid-photo-wrap"><div class="grid-photo-placeholder">bez fotky</div></div>`;
   return `
     ${photoHtml}
     <div class="grid-name">${p.name}</div>

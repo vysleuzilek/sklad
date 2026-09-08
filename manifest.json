@@ -3,7 +3,7 @@
   "short_name": "Sklad",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f4f1ec",
-  "theme_color": "#2b2320",
+  "background_color": "#14110E",
+  "theme_color": "#14110E",
   "icons": []
 }

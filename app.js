@@ -1,17 +1,30 @@
 let html5QrCode;
 let currentScannedCode = null;
-let currentProductDoc = null; // { id, ...data } pokud produkt existuje
-let allProducts = []; // lokální kopie pro hledání a statistiky
+let currentProductDoc = null;
+let pendingPhotoFile = null;
+let allProducts = [];
 
 const LOW_STOCK_THRESHOLD = 5;
 
-const startScanBtn = document.getElementById('startScanBtn');
-const stopScanBtn = document.getElementById('stopScanBtn');
-const actionPanel = document.getElementById('action-panel');
-const knownProductActions = document.getElementById('knownProductActions');
-const newProductForm = document.getElementById('newProductForm');
+// --- NAVIGACE MEZI ZÁLOŽKAMI ---
+document.querySelectorAll('.nav-btn').forEach((btn) => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+function switchView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.getElementById(viewId).classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.nav-btn[data-view="${viewId}"]`).classList.add('active');
+}
 
 // --- SKENOVÁNÍ ---
+const startScanBtn = document.getElementById('startScanBtn');
+const stopScanBtn = document.getElementById('stopScanBtn');
+const productCard = document.getElementById('product-card');
+const knownProduct = document.getElementById('knownProduct');
+const newProduct = document.getElementById('newProduct');
+
 startScanBtn.addEventListener('click', () => {
   document.getElementById('reader').classList.remove('hidden');
   stopScanBtn.classList.remove('hidden');
@@ -22,7 +35,7 @@ startScanBtn.addEventListener('click', () => {
     { facingMode: "environment" },
     { fps: 10, qrbox: { width: 250, height: 150 } },
     onScanSuccess,
-    () => {} // chyby při skenování ignorujeme, jen to zkouší dál
+    () => {}
   );
 });
 
@@ -42,7 +55,8 @@ async function onScanSuccess(decodedText) {
   stopScanner();
   currentScannedCode = decodedText;
   document.getElementById('scannedCode').textContent = decodedText;
-  actionPanel.classList.remove('hidden');
+  productCard.classList.remove('hidden');
+  resetPhotoPreview();
 
   const snapshot = await db.collection('products').where('barcode', '==', decodedText).get();
 
@@ -50,16 +64,51 @@ async function onScanSuccess(decodedText) {
     const doc = snapshot.docs[0];
     currentProductDoc = { id: doc.id, ...doc.data() };
     document.getElementById('productName').textContent = currentProductDoc.name;
-    document.getElementById('currentStock').textContent = currentProductDoc.stock;
-    knownProductActions.classList.remove('hidden');
-    newProductForm.classList.add('hidden');
+    document.getElementById('productPrice').textContent = currentProductDoc.price + ' Kč';
+    document.getElementById('currentStock').textContent = currentProductDoc.stock + ' ks';
+    if (currentProductDoc.photoUrl) showPhotoPreview(currentProductDoc.photoUrl);
+    knownProduct.classList.remove('hidden');
+    newProduct.classList.add('hidden');
   } else {
     currentProductDoc = null;
-    document.getElementById('productName').textContent = 'Neznámý produkt';
-    document.getElementById('currentStock').textContent = '-';
-    knownProductActions.classList.add('hidden');
-    newProductForm.classList.remove('hidden');
+    knownProduct.classList.add('hidden');
+    newProduct.classList.remove('hidden');
   }
+}
+
+// --- FOTKA ---
+const photoInput = document.getElementById('photoInput');
+const photoPreview = document.getElementById('photoPreview');
+const photoPlaceholder = document.getElementById('photoPlaceholder');
+
+photoInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingPhotoFile = file;
+  const reader = new FileReader();
+  reader.onload = (ev) => showPhotoPreview(ev.target.result);
+  reader.readAsDataURL(file);
+});
+
+function showPhotoPreview(url) {
+  photoPreview.src = url;
+  photoPreview.classList.remove('hidden');
+  photoPlaceholder.classList.add('hidden');
+}
+
+function resetPhotoPreview() {
+  photoPreview.src = '';
+  photoPreview.classList.add('hidden');
+  photoPlaceholder.classList.remove('hidden');
+  pendingPhotoFile = null;
+  photoInput.value = '';
+}
+
+async function uploadPendingPhoto(barcode) {
+  if (!pendingPhotoFile) return null;
+  const ref = storage.ref().child('products/' + barcode + '.jpg');
+  await ref.put(pendingPhotoFile);
+  return await ref.getDownloadURL();
 }
 
 // --- PŘÍJEM / VÝDEJ ---
@@ -71,7 +120,11 @@ async function changeStock(direction) {
   const change = qty * direction;
   const newStock = currentProductDoc.stock + change;
 
-  await db.collection('products').doc(currentProductDoc.id).update({ stock: newStock });
+  const updates = { stock: newStock };
+  const photoUrl = await uploadPendingPhoto(currentProductDoc.barcode);
+  if (photoUrl) updates.photoUrl = photoUrl;
+
+  await db.collection('products').doc(currentProductDoc.id).update(updates);
   await db.collection('movements').add({
     barcode: currentProductDoc.barcode,
     name: currentProductDoc.name,
@@ -90,11 +143,14 @@ document.getElementById('createProductBtn').addEventListener('click', async () =
 
   if (!name) { alert('Vyplň název produktu'); return; }
 
+  const photoUrl = await uploadPendingPhoto(currentScannedCode);
+
   await db.collection('products').add({
     barcode: currentScannedCode,
     name: name,
     price: price,
-    stock: qty
+    stock: qty,
+    photoUrl: photoUrl || null
   });
 
   if (qty !== 0) {
@@ -115,35 +171,25 @@ document.getElementById('createProductBtn').addEventListener('click', async () =
 document.getElementById('cancelBtn').addEventListener('click', resetPanel);
 
 function resetPanel() {
-  actionPanel.classList.add('hidden');
-  knownProductActions.classList.add('hidden');
-  newProductForm.classList.add('hidden');
+  productCard.classList.add('hidden');
+  knownProduct.classList.add('hidden');
+  newProduct.classList.add('hidden');
   currentScannedCode = null;
   currentProductDoc = null;
+  resetPhotoPreview();
 }
 
-// --- STATISTIKY ---
-function renderStats(products) {
-  const totalProducts = products.length;
-  const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const lowStock = products.filter(p => p.stock <= LOW_STOCK_THRESHOLD).length;
-
-  document.getElementById('statProducts').textContent = totalProducts;
-  document.getElementById('statTotalStock').textContent = totalStock;
-  document.getElementById('statLowStock').textContent = lowStock;
-}
-
-// --- ŽIVÝ PŘEHLED SKLADU ---
+// --- SKLAD: FOTO GRID ---
 function stockClass(stock) {
   if (stock <= 0) return 'out';
   if (stock <= LOW_STOCK_THRESHOLD) return 'low';
   return '';
 }
 
-function renderProducts(products) {
-  const container = document.getElementById('productsList');
+function renderGrid(products) {
+  const grid = document.getElementById('productsGrid');
   const emptyState = document.getElementById('emptyStock');
-  container.innerHTML = '';
+  grid.innerHTML = '';
 
   if (products.length === 0) {
     emptyState.classList.remove('hidden');
@@ -152,23 +198,38 @@ function renderProducts(products) {
   emptyState.classList.add('hidden');
 
   products.forEach((p) => {
-    const row = document.createElement('div');
-    row.className = 'product-row';
-    row.innerHTML = `
-      <div class="stock-indicator ${stockClass(p.stock)}"></div>
-      <div class="product-info">
-        <div class="product-name">${p.name}</div>
-        <div class="product-meta">${p.barcode} · ${p.price} Kč</div>
-      </div>
-      <div class="product-qty">${p.stock}</div>
+    const item = document.createElement('div');
+    item.className = 'grid-item';
+    const photoHtml = p.photoUrl
+      ? `<img class="grid-photo" src="${p.photoUrl}">`
+      : `<div class="grid-photo-placeholder">bez fotky</div>`;
+    item.innerHTML = `
+      ${photoHtml}
+      <div class="grid-name">${p.name}</div>
+      <div class="grid-qty ${stockClass(p.stock)}">${p.stock} ks</div>
     `;
-    container.appendChild(row);
+    item.addEventListener('click', () => openProductFromGrid(p));
+    grid.appendChild(item);
   });
+}
+
+function openProductFromGrid(p) {
+  switchView('view-scan');
+  currentScannedCode = p.barcode;
+  currentProductDoc = p;
+  document.getElementById('scannedCode').textContent = p.barcode;
+  document.getElementById('productName').textContent = p.name;
+  document.getElementById('productPrice').textContent = p.price + ' Kč';
+  document.getElementById('currentStock').textContent = p.stock + ' ks';
+  productCard.classList.remove('hidden');
+  knownProduct.classList.remove('hidden');
+  newProduct.classList.add('hidden');
+  resetPhotoPreview();
+  if (p.photoUrl) showPhotoPreview(p.photoUrl);
 }
 
 db.collection('products').orderBy('name').onSnapshot((snapshot) => {
   allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  renderStats(allProducts);
   applySearch();
 });
 
@@ -179,27 +240,5 @@ function applySearch() {
   const filtered = term
     ? allProducts.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term))
     : allProducts;
-  renderProducts(filtered);
+  renderGrid(filtered);
 }
-
-// --- HISTORIE POHYBŮ (posledních 15) ---
-db.collection('movements').orderBy('timestamp', 'desc').limit(15).onSnapshot((snapshot) => {
-  const list = document.getElementById('historyList');
-  const emptyHistory = document.getElementById('emptyHistory');
-  list.innerHTML = '';
-
-  if (snapshot.empty) {
-    emptyHistory.classList.remove('hidden');
-    return;
-  }
-  emptyHistory.classList.add('hidden');
-
-  snapshot.forEach((doc) => {
-    const m = doc.data();
-    const li = document.createElement('li');
-    const sign = m.change > 0 ? '+' : '';
-    const cls = m.change > 0 ? 'change-positive' : 'change-negative';
-    li.innerHTML = `<span>${m.name}</span><span class="${cls}">${sign}${m.change} ks</span>`;
-    list.appendChild(li);
-  });
-});

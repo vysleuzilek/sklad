@@ -66,10 +66,33 @@
 
   <!-- VIEW: SKLAD -->
   <section class="view hidden" id="view-sklad">
+    <div class="stock-value-line">Hodnota skladu: <span id="stockValue">0 Kč</span></div>
     <input type="text" id="searchInput" placeholder="Hledat produkt…">
     <div id="categoryFilter"></div>
+    <button id="trashToggleBtn" class="btn-trash-toggle">🗑 Koš (<span id="trashCount">0</span>)</button>
     <div id="productsGrid"></div>
+    <div id="trashGrid" class="hidden"></div>
     <p id="emptyStock" class="empty-state hidden">Zatím žádné produkty. Naskenuj první kód v Skenovat.</p>
+  </section>
+
+  <!-- VIEW: OBCHODY -->
+  <section class="view hidden" id="view-obchody">
+    <div id="storeForm">
+      <input type="text" id="storeName" placeholder="Název obchodu">
+      <input type="text" id="storeAddress" placeholder="Adresa">
+      <input type="text" id="storeContact" placeholder="Kontakt (telefon/email)">
+      <textarea id="storeNote" placeholder="Poznámka (co berou, kolik kusů…)"></textarea>
+      <button id="saveStoreBtn" class="btn-primary">Uložit obchod</button>
+    </div>
+    <div id="storesList"></div>
+    <p id="emptyStores" class="empty-state hidden">Zatím žádné obchody. Přidej první výše.</p>
+  </section>
+
+  <!-- VIEW: DOCHÁZÍ -->
+  <section class="view hidden" id="view-dochazi">
+    <p class="meta-line">Produkty s nízkým nebo nulovým stavem skladu.</p>
+    <div id="lowStockGrid"></div>
+    <p id="emptyLowStock" class="empty-state hidden">Nic nedochází, sklad je v pořádku.</p>
   </section>
 
   <!-- VIEW: FAKTURA -->
@@ -88,6 +111,14 @@
     <span class="nav-icon">▦</span>
     <span>Sklad</span>
   </button>
+  <button class="nav-btn" data-view="view-obchody">
+    <span class="nav-icon">⌂</span>
+    <span>Obchody</span>
+  </button>
+  <button class="nav-btn" data-view="view-dochazi">
+    <span class="nav-icon">!</span>
+    <span>Dochází</span>
+  </button>
   <button class="nav-btn" data-view="view-faktura">
     <span class="nav-icon">▤</span>
     <span>Faktura</span>
@@ -100,5 +131,12 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
 </body>
 </html>

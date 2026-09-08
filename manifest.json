@@ -1,0 +1,9 @@
+{
+  "name": "Sklad U havrana",
+  "short_name": "Sklad",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f1ec",
+  "theme_color": "#2b2320",
+  "icons": []
+}

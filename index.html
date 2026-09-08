@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sklad U havrana</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Sklad U havrana</h1>
+</header>
+
+<main>
+  <section id="scanner-section">
+    <button id="startScanBtn">📷 Skenovat kód</button>
+    <div id="reader"></div>
+    <button id="stopScanBtn" class="hidden">Zastavit skenování</button>
+  </section>
+
+  <section id="action-panel" class="hidden">
+    <h2 id="productName">-</h2>
+    <p>Naskenovaný kód: <span id="scannedCode"></span></p>
+    <p>Aktuální stav: <span id="currentStock">0</span> ks</p>
+
+    <div id="knownProductActions" class="hidden">
+      <input type="number" id="qtyInput" value="1" min="1">
+      <button id="stockInBtn">➕ Příjem</button>
+      <button id="stockOutBtn">➖ Výdej</button>
+    </div>
+
+    <div id="newProductForm" class="hidden">
+      <p>Tenhle kód ještě neznám, založ nový produkt:</p>
+      <input type="text" id="newName" placeholder="Název produktu">
+      <input type="number" id="newPrice" placeholder="Cena (Kč)">
+      <input type="number" id="newQty" placeholder="Počáteční stav (ks)" value="0">
+      <button id="createProductBtn">Založit produkt</button>
+    </div>
+
+    <button id="cancelBtn">Zrušit</button>
+  </section>
+
+  <section id="stock-list">
+    <h2>Stav skladu</h2>
+    <table>
+      <thead>
+        <tr><th>Produkt</th><th>Kód</th><th>Cena</th><th>Sklad</th></tr>
+      </thead>
+      <tbody id="productsTableBody"></tbody>
+    </table>
+  </section>
+
+  <section id="history-section">
+    <h2>Poslední pohyby</h2>
+    <ul id="historyList"></ul>
+  </section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

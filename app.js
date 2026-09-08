@@ -215,6 +215,19 @@ document.getElementById('createProductBtn').addEventListener('click', async () =
 
 document.getElementById('cancelBtn').addEventListener('click', resetPanel);
 
+document.getElementById('deleteProductBtn').addEventListener('click', async () => {
+  if (!currentProductDoc) return;
+  if (!confirm(`Smazat "${currentProductDoc.name}" ze skladu?`)) return;
+  try {
+    await db.collection('products').doc(currentProductDoc.id).delete();
+  } catch (err) {
+    alert('Smazání se nepovedlo: ' + err.message);
+    return;
+  }
+  resetPanel();
+  switchView('view-sklad');
+});
+
 function resetPanel() {
   productCard.classList.add('hidden');
   knownProduct.classList.add('hidden');
@@ -257,10 +270,23 @@ function productItemHtml(p) {
     ? `<div class="grid-photo-wrap"><img src="${p.photoUrl}"></div>`
     : `<div class="grid-photo-wrap"><div class="grid-photo-placeholder">bez fotky</div></div>`;
   return `
+    <button class="grid-delete-btn" type="button">✕</button>
     ${photoHtml}
-    <div class="grid-name">${p.name}</div>
+    <div class="grid-info-row">
+      <div class="grid-name">${p.name}</div>
+      <div class="grid-arrow">›</div>
+    </div>
     <div class="grid-qty ${stockClass(p.stock)}">${p.stock} ks</div>
   `;
+}
+
+async function deleteProduct(p) {
+  if (!confirm(`Smazat "${p.name}" ze skladu?`)) return;
+  try {
+    await db.collection('products').doc(p.id).delete();
+  } catch (err) {
+    alert('Smazání se nepovedlo: ' + err.message);
+  }
 }
 
 function renderGrid(products) {
@@ -297,6 +323,10 @@ function renderGrid(products) {
       item.className = 'grid-item';
       item.innerHTML = productItemHtml(p);
       item.addEventListener('click', () => openProductFromGrid(p));
+      item.querySelector('.grid-delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteProduct(p);
+      });
       grid.appendChild(item);
     });
 

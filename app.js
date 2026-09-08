@@ -493,31 +493,73 @@ function renderLowStock(active) {
 
 // --- OBCHODY ---
 let pendingStoreItems = [];
+let selectedStoreProductId = null;
 
-const storeProductSelect = document.getElementById('storeProductSelect');
+const storeProductSearch = document.getElementById('storeProductSearch');
+const storeProductResults = document.getElementById('storeProductResults');
 
 function populateStoreProductSelect() {
-  const current = storeProductSelect.value;
-  storeProductSelect.innerHTML = activeProducts()
-    .map(p => `<option value="${p.id}">${p.name}</option>`)
-    .join('');
-  if (current) storeProductSelect.value = current;
+  // Zachováno jako no-op kvůli volání v renderAll (výsledky se teď generují za běhu při psaní).
 }
 
-document.getElementById('addStoreItemBtn').addEventListener('click', () => {
-  const productId = storeProductSelect.value;
-  const qty = parseInt(document.getElementById('storeProductQty').value) || 1;
-  if (!productId) return;
+storeProductSearch.addEventListener('input', () => {
+  selectedStoreProductId = null;
+  const term = storeProductSearch.value.trim().toLowerCase();
+  if (!term) {
+    storeProductResults.classList.add('hidden');
+    storeProductResults.innerHTML = '';
+    return;
+  }
 
-  const product = activeProducts().find(p => p.id === productId);
+  const matches = activeProducts()
+    .filter(p => p.name.toLowerCase().includes(term))
+    .slice(0, 8);
+
+  if (matches.length === 0) {
+    storeProductResults.innerHTML = '<div class="store-result-item">Nic nenalezeno</div>';
+    storeProductResults.classList.remove('hidden');
+    return;
+  }
+
+  storeProductResults.innerHTML = matches.map(p =>
+    `<div class="store-result-item" data-id="${p.id}">${p.name}</div>`
+  ).join('');
+  storeProductResults.classList.remove('hidden');
+
+  storeProductResults.querySelectorAll('.store-result-item[data-id]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const product = activeProducts().find(p => p.id === el.dataset.id);
+      if (!product) return;
+      selectedStoreProductId = product.id;
+      storeProductSearch.value = product.name;
+      storeProductResults.classList.add('hidden');
+      storeProductResults.innerHTML = '';
+    });
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.store-search-wrap')) {
+    storeProductResults.classList.add('hidden');
+  }
+});
+
+document.getElementById('addStoreItemBtn').addEventListener('click', () => {
+  const qty = parseInt(document.getElementById('storeProductQty').value) || 1;
+  if (!selectedStoreProductId) { alert('Nejdřív vyber produkt ze seznamu'); return; }
+
+  const product = activeProducts().find(p => p.id === selectedStoreProductId);
   if (!product) return;
 
-  const existing = pendingStoreItems.find(i => i.productId === productId);
+  const existing = pendingStoreItems.find(i => i.productId === selectedStoreProductId);
   if (existing) {
     existing.qty += qty;
   } else {
-    pendingStoreItems.push({ productId, name: product.name, qty });
+    pendingStoreItems.push({ productId: selectedStoreProductId, name: product.name, qty });
   }
+
+  storeProductSearch.value = '';
+  selectedStoreProductId = null;
   document.getElementById('storeProductQty').value = 1;
   renderStoreItemsPicker();
 });

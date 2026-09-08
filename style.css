@@ -372,7 +372,39 @@ select {
   grid-template-columns: 1fr 70px auto;
   gap: 6px;
   margin-bottom: 4px;
+  align-items: start;
 }
+
+.store-search-wrap {
+  position: relative;
+}
+
+.store-search-wrap input[type="text"] {
+  margin: 0;
+}
+
+#storeProductResults {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 5;
+}
+
+.store-result-item {
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.store-result-item:last-child { border-bottom: none; }
+.store-result-item:active { background: var(--surface); }
 
 .store-item-picker select {
   margin-bottom: 0;

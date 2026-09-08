@@ -1,12 +1,11 @@
-// TODO: vlož sem config ze svého Firebase projektu
-// (Firebase Console -> Project settings -> Your apps -> Config)
+// Firebase config projektu sklad-u-havrana
 const firebaseConfig = {
-  apiKey: "TVOJE_API_KEY",
-  authDomain: "TVUJ_PROJEKT.firebaseapp.com",
-  projectId: "TVUJ_PROJEKT",
-  storageBucket: "TVUJ_PROJEKT.appspot.com",
-  messagingSenderId: "TVOJE_ID",
-  appId: "TVOJE_APP_ID"
+  apiKey: "AIzaSyDMY0TnEv2wbWN4QwKNFmix9tPCQrZWS_0",
+  authDomain: "sklad-u-havrana.firebaseapp.com",
+  projectId: "sklad-u-havrana",
+  storageBucket: "sklad-u-havrana.firebasestorage.app",
+  messagingSenderId: "196398904382",
+  appId: "1:196398904382:web:063b5679f81b9e5e7f0d6f"
 };
 
 firebase.initializeApp(firebaseConfig);

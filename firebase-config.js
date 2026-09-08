@@ -11,3 +11,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
+ 
+// Offline režim - appka funguje i bez signálu, změny se odešlou po připojení
+db.enablePersistence().catch((err) => {
+  console.warn('Offline režim se nepodařilo zapnout:', err.code);
+});

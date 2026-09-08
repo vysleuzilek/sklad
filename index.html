@@ -3,83 +3,92 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sklad U havrana</title>
+<title>Sklad</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header>
-  <div class="brand-tag">U HAVRANA</div>
-  <h1>Sklad</h1>
-</header>
+<div id="app">
 
-<main>
-
-  <section id="stats-bar">
-    <div class="stat-card">
-      <span class="stat-value" id="statProducts">0</span>
-      <span class="stat-label">Produktů</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="statTotalStock">0</span>
-      <span class="stat-label">Kusů skladem</span>
-    </div>
-    <div class="stat-card stat-warning">
-      <span class="stat-value" id="statLowStock">0</span>
-      <span class="stat-label">Docházejí</span>
-    </div>
-  </section>
-
-  <section id="scanner-section">
-    <div class="section-label">Příjem &amp; výdej</div>
+  <!-- VIEW: SKENOVAT -->
+  <section class="view" id="view-scan">
     <div id="reader"></div>
     <button id="startScanBtn" class="btn-primary">Skenovat kód</button>
     <button id="stopScanBtn" class="btn-secondary hidden">Zastavit skenování</button>
-  </section>
 
-  <section id="action-panel" class="hidden">
-    <h2 id="productName">-</h2>
-    <p class="meta-line">Kód <span id="scannedCode"></span> · sklad <span id="currentStock">0</span> ks</p>
+    <div id="product-card" class="hidden">
 
-    <div id="knownProductActions" class="hidden">
-      <input type="number" id="qtyInput" value="1" min="1">
-      <div class="action-row">
-        <button id="stockInBtn" class="btn-in">+ Příjem</button>
-        <button id="stockOutBtn" class="btn-out">− Výdej</button>
+      <div class="photo-upload">
+        <img id="photoPreview" class="hidden">
+        <div id="photoPlaceholder">Přidat fotku</div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment">
       </div>
-    </div>
 
-    <div id="newProductForm" class="hidden">
-      <p class="meta-line">Tenhle kód ještě neznám</p>
-      <input type="text" id="newName" placeholder="Název produktu">
-      <input type="number" id="newPrice" placeholder="Cena (Kč)">
-      <input type="number" id="newQty" placeholder="Počáteční stav (ks)" value="0">
-      <button id="createProductBtn" class="btn-primary">Založit produkt</button>
-    </div>
+      <div id="knownProduct" class="hidden">
+        <h2 id="productName">-</h2>
+        <p class="meta-line">Kód <span id="scannedCode"></span></p>
+        <div class="field-row">
+          <span>Cena</span>
+          <span id="productPrice">- Kč</span>
+        </div>
+        <div class="field-row">
+          <span>Na skladě</span>
+          <span id="currentStock">0 ks</span>
+        </div>
+        <input type="number" id="qtyInput" value="1" min="1">
+        <div class="action-row">
+          <button id="stockInBtn" class="btn-in">+ Příjem</button>
+          <button id="stockOutBtn" class="btn-out">− Výdej</button>
+        </div>
+      </div>
 
-    <button id="cancelBtn" class="btn-text">Zrušit</button>
+      <div id="newProduct" class="hidden">
+        <p class="meta-line">Nový kód, založ produkt</p>
+        <input type="text" id="newName" placeholder="Název produktu">
+        <input type="number" id="newPrice" placeholder="Cena (Kč)">
+        <input type="number" id="newQty" placeholder="Počáteční stav (ks)" value="0">
+        <button id="createProductBtn" class="btn-primary">Založit produkt</button>
+      </div>
+
+      <button id="cancelBtn" class="btn-text">Zrušit</button>
+    </div>
   </section>
 
-  <section id="stock-list">
-    <div class="section-label">Stav skladu</div>
+  <!-- VIEW: SKLAD -->
+  <section class="view hidden" id="view-sklad">
     <input type="text" id="searchInput" placeholder="Hledat produkt…">
-    <div id="productsList"></div>
-    <p id="emptyStock" class="empty-state hidden">Zatím žádné produkty. Naskenuj první kód nahoře.</p>
+    <div id="productsGrid"></div>
+    <p id="emptyStock" class="empty-state hidden">Zatím žádné produkty. Naskenuj první kód v Skenovat.</p>
   </section>
 
-  <section id="history-section">
-    <div class="section-label">Poslední pohyby</div>
-    <ul id="historyList"></ul>
-    <p id="emptyHistory" class="empty-state hidden">Zatím žádná historie pohybů.</p>
+  <!-- VIEW: FAKTURA -->
+  <section class="view hidden" id="view-faktura">
+    <p class="empty-state">Fakturace se doplní podle zadání – zatím tu nic není.</p>
   </section>
 
-</main>
+</div>
+
+<nav id="bottom-nav">
+  <button class="nav-btn active" data-view="view-scan">
+    <span class="nav-icon">▣</span>
+    <span>Skenovat</span>
+  </button>
+  <button class="nav-btn" data-view="view-sklad">
+    <span class="nav-icon">▦</span>
+    <span>Sklad</span>
+  </button>
+  <button class="nav-btn" data-view="view-faktura">
+    <span class="nav-icon">▤</span>
+    <span>Faktura</span>
+  </button>
+</nav>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>

@@ -361,11 +361,81 @@ select {
   width: 100%;
   margin: 10px 0;
   font-family: 'Inter', sans-serif;
-  min-height: 70px;
+  min-height: 40px;
   resize: vertical;
 }
 
 #storeForm { margin-bottom: 20px; }
+
+.store-item-picker {
+  display: grid;
+  grid-template-columns: 1fr 70px auto;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.store-item-picker select {
+  margin-bottom: 0;
+}
+
+.store-item-picker input[type="number"] {
+  margin: 0;
+  text-align: center;
+}
+
+.store-item-picker .btn-secondary {
+  width: auto;
+  margin-top: 0;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+#storeItemsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.store-item-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 8px 6px 12px;
+  font-size: 13px;
+}
+
+.store-item-chip button {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text);
+  font-size: 11px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.store-items-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.store-item-tag {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
 .store-card {
   background: var(--surface);

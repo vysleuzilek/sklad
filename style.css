@@ -98,7 +98,7 @@ button:active { opacity: 0.82; }
 }
 
 /* Inputs */
-input[type="text"], input[type="number"] {
+input[type="text"], input[type="number"], input[type="date"] {
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -383,7 +383,7 @@ select {
   margin: 0;
 }
 
-#storeProductResults {
+.store-product-results {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -422,7 +422,7 @@ select {
   white-space: nowrap;
 }
 
-#storeItemsList {
+.store-items-list-inline {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -498,6 +498,82 @@ select {
 
 .store-line { font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
 .store-note { font-size: 13px; color: var(--text); margin-top: 6px; }
+
+/* Naposledy navštíveno */
+.store-visit-line {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.store-visit-badge {
+  background: var(--surface-raised);
+  color: var(--gold);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.store-visit-badge.stale { color: var(--red); }
+
+/* Historie dodávek */
+.store-history-toggle {
+  width: auto;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-size: 12px;
+  padding: 6px 0;
+  text-align: left;
+}
+
+.store-history-list {
+  margin-top: 4px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.store-history-item {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.store-history-item:last-child { border-bottom: none; }
+.store-history-date { color: var(--text); font-weight: 600; margin-right: 6px; }
+
+.store-add-visit-btn {
+  width: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  padding: 7px 12px;
+  margin-top: 10px;
+}
+
+.store-add-visit-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.store-add-visit-panel input[type="date"] {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 9px 10px;
+  width: 100%;
+  margin: 6px 0;
+}
 
 /* Širší obrazovky (tablet/desktop) */
 @media (min-width: 700px) {

@@ -50,6 +50,12 @@
         <input type="text" id="newName" placeholder="Název produktu">
         <input type="number" id="newPrice" placeholder="Cena (Kč)">
         <input type="number" id="newQty" placeholder="Počáteční stav (ks)" value="0">
+      </div>
+
+      <label class="field-label" for="categorySelect">Kategorie</label>
+      <select id="categorySelect"></select>
+
+      <div id="newProductSubmit" class="hidden">
         <button id="createProductBtn" class="btn-primary">Založit produkt</button>
       </div>
 
@@ -60,6 +66,7 @@
   <!-- VIEW: SKLAD -->
   <section class="view hidden" id="view-sklad">
     <input type="text" id="searchInput" placeholder="Hledat produkt…">
+    <div id="categoryFilter"></div>
     <div id="productsGrid"></div>
     <p id="emptyStock" class="empty-state hidden">Zatím žádné produkty. Naskenuj první kód v Skenovat.</p>
   </section>

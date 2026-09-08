@@ -256,3 +256,34 @@ select {
 
 .nav-btn.active { color: var(--gold); }
 .nav-icon { font-size: 18px; line-height: 1; }
+
+/* Širší obrazovky (tablet/desktop) */
+@media (min-width: 700px) {
+  #app {
+    max-width: 900px;
+    padding: 32px 32px 100px;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+  }
+
+  #product-card {
+    max-width: 420px;
+  }
+}
+
+@media (min-width: 1100px) {
+  #app {
+    max-width: 1200px;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+#bottom-nav {
+  max-width: 100%;
+}

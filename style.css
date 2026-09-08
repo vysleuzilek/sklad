@@ -112,10 +112,70 @@ input[type="text"], input[type="number"] {
 input::placeholder { color: var(--text-muted); }
 input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
 
+/* Category select (scan card) */
+.field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 10px 0 4px;
+}
+
+select {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 12px;
+  width: 100%;
+  margin-bottom: 4px;
+  font-family: 'Inter', sans-serif;
+}
+
 /* Sklad grid */
-#searchInput { margin-bottom: 14px; }
+#searchInput { margin-bottom: 10px; }
+
+#categoryFilter {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+}
+
+.filter-chip {
+  flex-shrink: 0;
+  width: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.filter-chip.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1A1409;
+  font-weight: 600;
+}
+
+.category-group { margin-bottom: 20px; }
+
+.category-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
 
 #productsGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+.product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;

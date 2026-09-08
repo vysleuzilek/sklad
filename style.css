@@ -299,13 +299,103 @@ select {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
-  padding: 6px 4px;
+  font-size: 10px;
+  padding: 6px 2px;
   border-radius: 0;
 }
 
 .nav-btn.active { color: var(--gold); }
-.nav-icon { font-size: 18px; line-height: 1; }
+.nav-icon { font-size: 17px; line-height: 1; }
+
+/* Hodnota skladu */
+.stock-value-line {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.stock-value-line span {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Koš */
+.btn-trash-toggle {
+  width: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+}
+
+.btn-trash-toggle.active {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.trash-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.trash-actions button {
+  font-size: 12px;
+  padding: 8px 4px;
+}
+
+.btn-restore { background: var(--green); color: #0F1A0B; font-weight: 600; }
+.btn-purge { background: transparent; border: 1px solid var(--red); color: var(--red); }
+
+/* Obchody */
+#storeForm textarea {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 12px;
+  width: 100%;
+  margin: 10px 0;
+  font-family: 'Inter', sans-serif;
+  min-height: 70px;
+  resize: vertical;
+}
+
+#storeForm { margin-bottom: 20px; }
+
+.store-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.store-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.store-name { font-size: 16px; font-weight: 600; }
+
+.store-delete-btn {
+  position: static;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  background: var(--surface-raised);
+  flex-shrink: 0;
+}
+
+.store-line { font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
+.store-note { font-size: 13px; color: var(--text); margin-top: 6px; }
 
 /* Širší obrazovky (tablet/desktop) */
 @media (min-width: 700px) {

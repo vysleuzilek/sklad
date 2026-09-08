@@ -84,7 +84,10 @@
 
       <label class="field-label">Co berou</label>
       <div class="store-item-picker">
-        <select id="storeProductSelect"></select>
+        <div class="store-search-wrap">
+          <input type="text" id="storeProductSearch" placeholder="Hledat produkt…" autocomplete="off">
+          <div id="storeProductResults" class="hidden"></div>
+        </div>
         <input type="number" id="storeProductQty" value="1" min="1">
         <button id="addStoreItemBtn" type="button" class="btn-secondary">+ Přidat</button>
       </div>

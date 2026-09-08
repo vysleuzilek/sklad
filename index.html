@@ -82,16 +82,11 @@
       <input type="text" id="storeAddress" placeholder="Adresa">
       <input type="text" id="storeContact" placeholder="Kontakt (telefon/email)">
 
+      <label class="field-label" for="storeVisitDate">Datum návštěvy</label>
+      <input type="date" id="storeVisitDate">
+
       <label class="field-label">Co berou</label>
-      <div class="store-item-picker">
-        <div class="store-search-wrap">
-          <input type="text" id="storeProductSearch" placeholder="Hledat produkt…" autocomplete="off">
-          <div id="storeProductResults" class="hidden"></div>
-        </div>
-        <input type="number" id="storeProductQty" value="1" min="1">
-        <button id="addStoreItemBtn" type="button" class="btn-secondary">+ Přidat</button>
-      </div>
-      <div id="storeItemsList"></div>
+      <div id="storeItemPickerMount"></div>
 
       <textarea id="storeNote" placeholder="Poznámka"></textarea>
       <button id="saveStoreBtn" class="btn-primary">Uložit obchod</button>

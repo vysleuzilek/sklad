@@ -2,8 +2,10 @@ let html5QrCode;
 let currentScannedCode = null;
 let currentProductDoc = null;
 let pendingPhotoFile = null;
-let allProducts = [];
+let allProducts = []; // vše vč. smazaných (soft delete)
+let allStores = [];
 let activeCategory = 'all';
+let trashVisible = false;
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -87,9 +89,10 @@ async function onScanSuccess(decodedText) {
     return;
   }
 
-  if (!snapshot.empty) {
-    const doc = snapshot.docs[0];
-    currentProductDoc = { id: doc.id, ...doc.data() };
+  const found = snapshot.docs.find(d => !d.data().deleted);
+
+  if (found) {
+    currentProductDoc = { id: found.id, ...found.data() };
     document.getElementById('productName').textContent = currentProductDoc.name;
     document.getElementById('productPrice').textContent = currentProductDoc.price + ' Kč';
     document.getElementById('currentStock').textContent = currentProductDoc.stock + ' ks';
@@ -190,7 +193,8 @@ document.getElementById('createProductBtn').addEventListener('click', async () =
       price: price,
       stock: qty,
       category: category,
-      photoUrl: photoUrl || null
+      photoUrl: photoUrl || null,
+      deleted: false
     });
 
     if (qty !== 0) {
@@ -217,13 +221,8 @@ document.getElementById('cancelBtn').addEventListener('click', resetPanel);
 
 document.getElementById('deleteProductBtn').addEventListener('click', async () => {
   if (!currentProductDoc) return;
-  if (!confirm(`Smazat "${currentProductDoc.name}" ze skladu?`)) return;
-  try {
-    await db.collection('products').doc(currentProductDoc.id).delete();
-  } catch (err) {
-    alert('Smazání se nepovedlo: ' + err.message);
-    return;
-  }
+  if (!confirm(`Přesunout "${currentProductDoc.name}" do koše?`)) return;
+  await softDeleteProduct(currentProductDoc.id);
   resetPanel();
   switchView('view-sklad');
 });
@@ -258,30 +257,28 @@ function renderCategoryFilter() {
 }
 renderCategoryFilter();
 
-// --- SKLAD: FOTO GRID, SESKUPENÉ PODLE KATEGORIE ---
-function stockClass(stock) {
-  if (stock <= 0) return 'out';
-  if (stock <= LOW_STOCK_THRESHOLD) return 'low';
-  return '';
+// --- SMAZÁNÍ / KOŠ ---
+async function softDeleteProduct(id) {
+  try {
+    await db.collection('products').doc(id).update({
+      deleted: true,
+      deletedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    alert('Přesun do koše se nepovedl: ' + err.message);
+  }
 }
 
-function productItemHtml(p) {
-  const photoHtml = p.photoUrl
-    ? `<div class="grid-photo-wrap"><img src="${p.photoUrl}"></div>`
-    : `<div class="grid-photo-wrap"><div class="grid-photo-placeholder">bez fotky</div></div>`;
-  return `
-    <button class="grid-delete-btn" type="button">✕</button>
-    ${photoHtml}
-    <div class="grid-info-row">
-      <div class="grid-name">${p.name}</div>
-      <div class="grid-arrow">›</div>
-    </div>
-    <div class="grid-qty ${stockClass(p.stock)}">${p.stock} ks</div>
-  `;
+async function restoreProduct(id) {
+  try {
+    await db.collection('products').doc(id).update({ deleted: false, deletedAt: null });
+  } catch (err) {
+    alert('Obnovení se nepovedlo: ' + err.message);
+  }
 }
 
-async function deleteProduct(p) {
-  if (!confirm(`Smazat "${p.name}" ze skladu?`)) return;
+async function permanentlyDeleteProduct(p) {
+  if (!confirm(`Trvale smazat "${p.name}"? Tohle už nejde vrátit.`)) return;
   try {
     await db.collection('products').doc(p.id).delete();
   } catch (err) {
@@ -289,8 +286,85 @@ async function deleteProduct(p) {
   }
 }
 
+const trashToggleBtn = document.getElementById('trashToggleBtn');
+const productsGridEl = document.getElementById('productsGrid');
+const trashGridEl = document.getElementById('trashGrid');
+
+trashToggleBtn.addEventListener('click', () => {
+  trashVisible = !trashVisible;
+  productsGridEl.classList.toggle('hidden', trashVisible);
+  categoryFilter.classList.toggle('hidden', trashVisible);
+  document.getElementById('searchInput').classList.toggle('hidden', trashVisible);
+  trashGridEl.classList.toggle('hidden', !trashVisible);
+  trashToggleBtn.classList.toggle('active', trashVisible);
+  document.getElementById('emptyStock').classList.add('hidden');
+  renderAll();
+});
+
+// --- STAV SKLADU: pomocné funkce ---
+function stockClass(stock) {
+  if (stock <= 0) return 'out';
+  if (stock <= LOW_STOCK_THRESHOLD) return 'low';
+  return '';
+}
+
+function formatMoney(n) {
+  return Math.round(n).toLocaleString('cs-CZ') + ' Kč';
+}
+
+// Vytvoří jednu kartu produktu. mode: 'active' (klik = detail, X = do koše)
+// nebo 'trash' (Obnovit / Smazat natrvalo)
+function createProductCard(p, mode) {
+  const item = document.createElement('div');
+  item.className = 'grid-item';
+
+  const photoHtml = p.photoUrl
+    ? `<div class="grid-photo-wrap"><img src="${p.photoUrl}"></div>`
+    : `<div class="grid-photo-wrap"><div class="grid-photo-placeholder">bez fotky</div></div>`;
+
+  if (mode === 'trash') {
+    item.innerHTML = `
+      ${photoHtml}
+      <div class="grid-info-row">
+        <div class="grid-name">${p.name}</div>
+      </div>
+      <div class="grid-qty">${p.stock} ks</div>
+      <div class="trash-actions">
+        <button class="btn-restore" type="button">Obnovit</button>
+        <button class="btn-purge" type="button">Smazat natrvalo</button>
+      </div>
+    `;
+    item.querySelector('.btn-restore').addEventListener('click', (e) => {
+      e.stopPropagation();
+      restoreProduct(p.id);
+    });
+    item.querySelector('.btn-purge').addEventListener('click', (e) => {
+      e.stopPropagation();
+      permanentlyDeleteProduct(p);
+    });
+  } else {
+    item.innerHTML = `
+      <button class="grid-delete-btn" type="button">✕</button>
+      ${photoHtml}
+      <div class="grid-info-row">
+        <div class="grid-name">${p.name}</div>
+        <div class="grid-arrow">›</div>
+      </div>
+      <div class="grid-qty ${stockClass(p.stock)}">${p.stock} ks</div>
+    `;
+    item.addEventListener('click', () => openProductFromGrid(p));
+    item.querySelector('.grid-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm(`Přesunout "${p.name}" do koše?`)) softDeleteProduct(p.id);
+    });
+  }
+
+  return item;
+}
+
+// --- SKLAD: FOTO GRID, SESKUPENÉ PODLE KATEGORIE ---
 function renderGrid(products) {
-  const container = document.getElementById('productsGrid');
+  const container = productsGridEl;
   const emptyState = document.getElementById('emptyStock');
   container.innerHTML = '';
 
@@ -318,21 +392,23 @@ function renderGrid(products) {
     const grid = document.createElement('div');
     grid.className = 'product-grid';
 
-    inGroup.forEach((p) => {
-      const item = document.createElement('div');
-      item.className = 'grid-item';
-      item.innerHTML = productItemHtml(p);
-      item.addEventListener('click', () => openProductFromGrid(p));
-      item.querySelector('.grid-delete-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteProduct(p);
-      });
-      grid.appendChild(item);
-    });
+    inGroup.forEach((p) => grid.appendChild(createProductCard(p, 'active')));
 
     group.appendChild(grid);
     container.appendChild(group);
   });
+}
+
+function renderTrash(products) {
+  trashGridEl.innerHTML = '';
+  if (products.length === 0) {
+    trashGridEl.innerHTML = '<p class="empty-state">Koš je prázdný.</p>';
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'product-grid';
+  products.forEach(p => grid.appendChild(createProductCard(p, 'trash')));
+  trashGridEl.appendChild(grid);
 }
 
 function openProductFromGrid(p) {
@@ -354,18 +430,127 @@ function openProductFromGrid(p) {
 
 db.collection('products').orderBy('name').onSnapshot((snapshot) => {
   allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  applySearch();
+  renderAll();
 });
 
 document.getElementById('searchInput').addEventListener('input', applySearch);
 
+function activeProducts() {
+  return allProducts.filter(p => !p.deleted);
+}
+
+function deletedProducts() {
+  return allProducts.filter(p => p.deleted);
+}
+
+function renderAll() {
+  const trashed = deletedProducts();
+  document.getElementById('trashCount').textContent = trashed.length;
+
+  const active = activeProducts();
+  const totalValue = active.reduce((sum, p) => sum + (p.price || 0) * (p.stock || 0), 0);
+  document.getElementById('stockValue').textContent = formatMoney(totalValue);
+
+  if (trashVisible) {
+    renderTrash(trashed);
+  } else {
+    applySearch();
+  }
+
+  renderLowStock(active);
+}
+
 function applySearch() {
   const term = document.getElementById('searchInput').value.trim().toLowerCase();
   let filtered = term
-    ? allProducts.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term))
-    : allProducts;
+    ? activeProducts().filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term))
+    : activeProducts();
   if (activeCategory !== 'all') {
     filtered = filtered.filter(p => (p.category || '') === activeCategory);
   }
   renderGrid(filtered);
 }
+
+// --- DOCHÁZÍ (nízký stav skladu) ---
+function renderLowStock(active) {
+  const low = active.filter(p => p.stock <= LOW_STOCK_THRESHOLD);
+  const container = document.getElementById('lowStockGrid');
+  const emptyState = document.getElementById('emptyLowStock');
+  container.innerHTML = '';
+
+  if (low.length === 0) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  emptyState.classList.add('hidden');
+
+  const grid = document.createElement('div');
+  grid.className = 'product-grid';
+  low.sort((a, b) => a.stock - b.stock).forEach(p => grid.appendChild(createProductCard(p, 'active')));
+  container.appendChild(grid);
+}
+
+// --- OBCHODY ---
+document.getElementById('saveStoreBtn').addEventListener('click', async () => {
+  const name = document.getElementById('storeName').value.trim();
+  const address = document.getElementById('storeAddress').value.trim();
+  const contact = document.getElementById('storeContact').value.trim();
+  const note = document.getElementById('storeNote').value.trim();
+
+  if (!name) { alert('Vyplň název obchodu'); return; }
+
+  try {
+    await db.collection('stores').add({
+      name, address, contact, note,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    alert('Uložení obchodu se nepovedlo: ' + err.message);
+    return;
+  }
+
+  document.getElementById('storeName').value = '';
+  document.getElementById('storeAddress').value = '';
+  document.getElementById('storeContact').value = '';
+  document.getElementById('storeNote').value = '';
+});
+
+function renderStores() {
+  const container = document.getElementById('storesList');
+  const emptyState = document.getElementById('emptyStores');
+  container.innerHTML = '';
+
+  if (allStores.length === 0) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  emptyState.classList.add('hidden');
+
+  allStores.forEach((s) => {
+    const card = document.createElement('div');
+    card.className = 'store-card';
+    card.innerHTML = `
+      <div class="store-card-header">
+        <div class="store-name">${s.name}</div>
+        <button class="grid-delete-btn store-delete-btn" type="button">✕</button>
+      </div>
+      ${s.address ? `<div class="store-line">${s.address}</div>` : ''}
+      ${s.contact ? `<div class="store-line">${s.contact}</div>` : ''}
+      ${s.note ? `<div class="store-note">${s.note}</div>` : ''}
+    `;
+    card.querySelector('.store-delete-btn').addEventListener('click', async () => {
+      if (!confirm(`Smazat obchod "${s.name}"?`)) return;
+      try {
+        await db.collection('stores').doc(s.id).delete();
+      } catch (err) {
+        alert('Smazání se nepovedlo: ' + err.message);
+      }
+    });
+    container.appendChild(card);
+  });
+}
+
+db.collection('stores').orderBy('name').onSnapshot((snapshot) => {
+  allStores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  renderStores();
+});
